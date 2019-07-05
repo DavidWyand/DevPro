@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		
+		<meta charset="utf-8">
+		<meta http-equiv="X-UI-Compatible" content="IE=edge,chrome=1">
+		<meta name="viewport" content="width=device.width, initial-scale=1.0">
+		<meta name="description" content="">
+		<meta name="author" content="">
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		
+		<title>Game Development</title>
+
+		<link rel="stylesheet" type="text/css" href="css/bootstrap.css">
+		<link rel="stylesheet" type="text/css" href="css/prettify.css">
+		<link rel="stylesheet" type="text/css" href="css/video-js-devpro.css">
+		<link rel="stylesheet" type="text/css" href="css/popcorn.quizmaster.css">
+		<link rel="stylesheet" type="text/css" href="css/style.css">
+
+		<script src="js/vendor/angular.min.js"></script>
+		<script src="js/vendor/angular-sanitize.min.js"></script>
+		<script src="js/vendor/angular-sticky.min.js"></script>
+		<script src="js/vendor/angular-touch.min.js"></script>
+		<script src="js/vendor/angular-ui-router.min.js"></script>
+		
+		<script src="js/vendor/jquery-1.11.1.min.js"></script>
+		<script src="js/vendor/bootstrap.js"></script>
+		<script src="js/vendor/ui-bootstrap-tpls-0.10.0.min.js"></script>
+		
+		<script src="js/vendor/video.js"></script>
+		<script src="js/vendor/videojs-speed.js"></script>
+		<script src="js/vendor/popcorn.js"></script>
+		<script src="js/vendor/popcorn.quizmaster.js"></script>
+		
+		<script src="js/vendor/prettify.js"></script>
+
+		<script src="js/glossary.js"></script>
+		<script src="js/index.js"></script>
+		<script src="js/curriculumdata.js"></script> 
+
+		<script src="js/app/demo.js"></script>
+		<script src="js/app/app.js"></script>
+		<script src="js/app/devpro_controller.js"></script>
+		<script src="js/app/analytics.js"></script>
+		
+	</head>
+
+	<body ng-app="GameDevApp" id="play" class="{{ course.class }}" ng-init="setDemoMode($window.isDemo)" ng-controller="DevProController" ng-class="{'running':running}">
+		
+		<header ng-class="{'waiting':devpro.screen==='home'}"><div class="wrap">
+		
+			<h1 class="logo"><a href="http://gginteractive.com"><img src="./images/logo.svg" alt="GG|Interactive" width="280" height="56"></a></h1>
+			<nav role="navigation" class="desktop">
+				
+				<ul class="courses">
+					<li ng-repeat="(course_id,course) in courses" ng-class="{'current':devpro.current.course==course_id,'open':!course.nav_collapse}" ng-mouseover="course.nav_collapse=false" ng-mouseout="course.nav_collapse=true">
+						<a ng-click="loadCourse(course_id)">{{ course.title }}</a>
+						<ul class="arcs dropdown-menu" role="menu">
+							<li ng-repeat="(arc_id,arc) in course.arcs" ng-class="{'open':!arc.nav_collapse}" ng-mouseover="arc.nav_collapse=false" ng-mouseout="arc.nav_collapse=true">
+								<a ng-click="loadArc(course_id,arc_id)">{{ arc.title }}<span class="glyphicon glyphicon-chevron-right"></span></a>
+								<ul class="modules dropdown-menu" ng-if="arc.modules&&arc.modules.length" role="menu">
+									<li ng-repeat="(module_id,module) in arc.modules">
+										<a ng-click="loadModule(course_id,arc_id,module_id)">{{ module.title }}</a>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</li>
+				</ul>
+				
+				<ul class="user" ng-if="USEnabled()">
+					<li><a class="dropdown-toggle" data-toggle="dropdown">{{ usDisplayName }}<span class="glyphicon glyphicon-chevron-down"></span></a>
+						<ul class="dropdown-menu" role="menu">
+							<li ng-if="canPush()"><a ng-click="doPush()">Push</a></li>
+						</ul>
+					</li>
+				</ul>
+				
+			</nav>
+			
+			<nav role="navigation" class="tablet">
+				
+				<ul>
+					<li ng-class="{'open':!devpro.nav_collapse}" class="current">
+						<a ng-click="devpro.nav_collapse=!devpro.nav_collapse">
+							<span class="icon-bar"></span>
+							<span class="icon-bar"></span>
+							<span class="icon-bar"></span>
+						</a>
+						<ul class="dropdown-menu" role="menu" ng-click="devpro.nav_collapse=true">
+							<li ng-repeat="(course_id,course) in courses" class="alt" ng-class="{'current':devpro.screen==='course'&&devpro.current.course===course_id }">
+								<a ng-click="loadCourse(course_id)">{{ course.title }}</a>
+							</li>
+							<li class="divider"></li>
+							<li class="index alt" ng-class="{'current':devpro.screen==='index'}">
+								<a ng-click="loadIndex(devpro.current.course)">Index <span class="glyphicon glyphicon-th-list"></span></a>
+							</li>
+							<li class="glossary alt" ng-class="{'current':devpro.screen==='glossary'}">
+								<a ng-click="loadGlossary(devpro.current.course)">Glossary <span class="glyphicon glyphicon-list-alt"></span></a>
+							</li>
+						</ul>
+					</li>
+				</ul>
+				
+			</nav>
+			
+		</header>
+		
+		<article class="wrap {{ devpro.screen }}" ng-class="{'maximized':!devpro.playlist_active, 'player':topic.movie}">
+			
+			<header>
+				
+				<ul class="crumbs">
+					<li ng-repeat="(crumb_id,crumb) in devpro.crumbs" class="{{ crumb.class }}">
+						<a ng-if="crumb.href" ng-href="{{ crumb.href }}">{{ crumb.title }}</a>
+						<b ng-if="!crumb.href">{{ crumb.title }}</b>
+					</li>
+				</ul>
+				
+				<h1><small ng-if="devpro.title_id" ng-bind="devpro.title_id"></small>{{ devpro.title }}</h1>
+					
+				<ul class="crumbs secondary">
+					<li ng-if="devpro.prev.arc!==false">&laquo; <a ng-click="loadArc(devpro.current.course,devpro.prev.arc)">{{ courses[devpro.current.course].arcs[devpro.prev.arc].title }}</a></li>
+					<!--li ng-if="devpro.next.arc!==false">
+						<span ng-if="devpro.prev.arc===false&&devpro.screen==='arc'">Next Arc: </span>
+						<a ng-click="loadArc(devpro.current.course,devpro.next.arc)">{{ courses[devpro.current.course].arcs[devpro.next.arc].title }}</a> &raquo;
+					</li-->
+					<li ng-if="devpro.prev.module!==false">&laquo; <a ng-click="loadModule(devpro.current.course,devpro.current.arc,devpro.prev.module)">{{ courses[devpro.current.course].arcs[devpro.current.arc].modules[devpro.prev.module].title }}</a></li>
+					<li ng-if="devpro.next.module!==false">
+						<span ng-if="devpro.prev.module===false&&devpro.screen==='topic'">Next Module: </span>
+						<a ng-click="loadModule(devpro.current.course,devpro.current.arc,devpro.next.module)">{{ courses[devpro.current.course].arcs[devpro.current.arc].modules[devpro.next.module].title }}</a> &raquo;
+					</li>
+				</ul>
+					
+				<ul class="topic_menu lesson_plan unselectable" ng-if="devpro.current.module>=0&&devpro.current.course>=0">
+					<li class="playlist" ng-class="{'open':devpro.playlist_active}">
+						<a ng-click="triggerPlaylist()"><span class="glyphicon glyphicon-arrow-left" ng-show="!topic.movie"></span>Playlist<span class="glyphicon" ng-show="topic.movie" ng-class="{'glyphicon-plus':!devpro.playlist_active,'glyphicon-minus':devpro.playlist_active}"></span></a>
+						<div class="now_playing" ng-show="devpro.playlist_active">
+							<a class="prev" ng-if="devpro.prev.topic!==false" ng-click="loadTopic(devpro.current.course,devpro.current.arc,devpro.current.module,devpro.prev.topic)"><span class="glyphicon glyphicon-chevron-left"></span></a> 
+							<img ng-src="{{ topic.thumb }}" width="90" height="50" alt="video thumbnail for {{ topic.title }}">
+							<span class="title">{{ topic.title }}</span>
+							<a class="next" ng-if="devpro.next.topic!==false" ng-click="loadTopic(devpro.current.course,devpro.current.arc,devpro.current.module,devpro.next.topic)"><span class="glyphicon glyphicon-chevron-right"></span></a> 
+						</div>
+						<ul class="dropdown-menu">
+							<li ng-class="{current:devpro.current.topic===playlist_key}" ng-repeat="playlist_key in module.playlist">
+								<a ng-if="devpro.current.topic!==playlist_key" ng-click="loadTopic(devpro.current.course,devpro.current.arc,devpro.current.module,playlist_key)">{{ module.topics[playlist_key].title }}</a>
+								<span ng-if="devpro.current.topic===playlist_key">{{ module.topics[playlist_key].title }}</span>
+							</li>
+						</ul>
+					</li>
+					<li ng-class="{current:devpro.current.topic===button_key}" class="button {{ module.topics[button_key].link }}" ng-repeat="button_key in module.buttons">
+						<a ng-click="devpro.playlist_active=false;loadTopic(devpro.current.course,devpro.current.arc,devpro.current.module,button_key);">{{ module.topics[button_key].title }}</a>
+					</li>
+				</ul>
+				
+			</header>
+			
+			<div class="content" ng-class="{'loading':topic.movie&&!devpro.video.pop}">
+				
+				<div ng-show="devpro.screen==='topic'&&topic.exercise" class="download_link">
+					<a ng-if="!isDemo" ng-href="{{ topic.exercise }}" target="_blank" class="btn btn-lg btn-danger">Download <span class="glyphicon glyphicon-download"></span></a>
+					<a ng-if="isDemo" ng-click="launchExercise('', $event);" class="btn btn-lg btn-danger">Download <span class="glyphicon glyphicon-download"></span></a>
+				</div>
+				
+				<div class="screen" ui-view>
+				
+				</div>
+				
+				<div ng-if="devpro.screen==='topic'&&topic.exercise" class="download_link">
+					<a ng-if="!isDemo" ng-href="{{ topic.exercise }}" target="_blank" class="btn btn-lg btn-danger">Download <span class="glyphicon glyphicon-download"></span></a>
+					<a ng-if="isDemo" ng-click="launchExercise('', $event);" class="btn btn-lg btn-danger">Download <span class="glyphicon glyphicon-download"></span></a>
+				</div>
+				
+			</div>
+		
+		</article>
+		
+		<footer><div class="wrap">
+
+			<h4 ng-if="topic.movie">Now Playing: <b ng-bind="topic.title"></b> <small><a ng-click="loadReferenceSection(devpro.current.course,devpro.current.arc,devpro.current.module,topic.reference)">View Reference</a></small></h4>
+			<ul class="crumbs secondary" ng-if="devpro.screen==='topic'">
+				<li ng-if="devpro.prev.topic!==false">&laquo; <a ng-click="loadTopic(devpro.current.course,devpro.current.arc,devpro.current.module,devpro.prev.topic)">{{ courses[devpro.current.course].arcs[devpro.current.arc].modules[devpro.current.module].topics[devpro.prev.topic].title }}</a></li>
+				<li ng-if="devpro.next.topic!==false">
+					<span ng-if="devpro.prev.topic===false">Next Video: </span>
+					<a ng-click="loadTopic(devpro.current.course,devpro.current.arc,devpro.current.module,devpro.next.topic)">{{ courses[devpro.current.course].arcs[devpro.current.arc].modules[devpro.current.module].topics[devpro.next.topic].title }}</a> &raquo;
+				</li>
+			</ul>
+			
+			<ul class="crumbs supplemental desktop">
+				<li class="index" ng-class="{'current':devpro.screen==='index'}">
+					<a ng-click="loadIndex(devpro.current.course)">Index <span class="glyphicon glyphicon-th-list"></span></a>
+				</li>
+				<li class="glossary" ng-class="{'current':devpro.screen==='glossary'}">
+					<a ng-click="loadGlossary(devpro.current.course)">Glossary <span class="glyphicon glyphicon-list-alt"></span></a>
+				</li>
+			</ul>
+				
+			<hr class="clear short">
+				
+			<p class="copyright">Copyright &copy;<span ng-bind="devpro.year">2020</span> by <strong>GarageGames</strong>, LLC.</p>
+			<p class="version" ng-if="courses[devpro.current.course].version">Course Version: <b ng-bind="courses[devpro.current.course].version">March-2015</b></p>
+			<p class="agent ng-hide" ng-bind="userAgent">mobile</p>
+			
+			
+			<p id="demo_bar" ng-if="isDemo">
+				Limited Demo Version - <a ng-click="launchExercise('', $event);">Register</a> for Full Demo.
+			</p>
+
+			<!-- Modal Dialog -->
+			<aside class="modal fade" id="myModal">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header" style="background-color:#555">
+							<button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+							<h4 class="modal-title"><font color=white>Register for Full Version</font></h4>
+						</div>
+						<div class="modal-body">
+							<h2 style="margin: 0 0 10px 0">The full evaluation is just a few clicks away!</h2>
+							<p>This demo version includes all of the content of the Game Design and Game Programming courses. If you would like to request a full version
+								that includes all of the exercise files to evaluate, click the button below to register.</p>
+								<a href="https://store.gginteractive.com/register" class="btn btn-primary" >Register</a> 
+							<p class="alert alert-warning" style="font-size: 12px;padding: 5px;margin: 15px 0 -15px 0;"><em><b>NOTE:</b> We will be updating this demo version with videos that are limited to only 30 seconds. If you are using this demo version for teaching,
+								please register so you can have full access to the course materials. We will also have a fully hosted version of each course available to 
+								registered users before we limit this demo.</em></p>
+						</div>
+						<div class="modal-footer" style="background-color:#CCC">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+						</div>
+					</div><!-- /.modal-content -->
+				</div><!-- /.modal-dialog -->
+			</aside><!-- /.modal -->
+
+		</div></footer>
+
+	</body>
+</html>
